@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Sidebar } from '../components/Sidebar';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -38,15 +38,6 @@ export default function Billing() {
     notes: ''
   });
 
-  useEffect(() => {
-    fetchFarms();
-    fetchInvoices();
-  }, []);
-
-  useEffect(() => {
-    generateInvoiceNumber();
-  }, [invoices]);
-
   const fetchFarms = async () => {
     try {
       const { data } = await axios.get(`${API_URL}/api/farms`, {
@@ -71,11 +62,20 @@ export default function Billing() {
     }
   };
 
-  const generateInvoiceNumber = () => {
+  const generateInvoiceNumber = useCallback(() => {
     const count = invoices.length + 1;
     const invoiceNo = `INV-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
     setFormData(prev => ({ ...prev, invoice_number: invoiceNo }));
-  };
+  }, [invoices.length]);
+
+  useEffect(() => {
+    fetchFarms();
+    fetchInvoices();
+  }, []);
+
+  useEffect(() => {
+    generateInvoiceNumber();
+  }, [generateInvoiceNumber]);
 
   const calculateTotals = (items, gstEnabled) => {
     const subtotal = items.reduce((sum, item) => sum + item.total, 0);

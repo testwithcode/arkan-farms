@@ -642,8 +642,12 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     }
 
 def get_cors_origins() -> List[str]:
-    origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
-    return [origin.strip() for origin in origins.split(",") if origin.strip()]
+    configured_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
+    origins = [origin.strip().rstrip("/") for origin in configured_origins.split(",") if origin.strip()]
+    frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
+    if frontend_url and frontend_url not in origins:
+        origins.append(frontend_url)
+    return origins
 
 cors_origins = get_cors_origins()
 

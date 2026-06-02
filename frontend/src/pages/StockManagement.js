@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -35,13 +35,7 @@ export default function StockManagement() {
     notes: ''
   });
 
-  useEffect(() => {
-    if (farmId) {
-      fetchEntries();
-    }
-  }, [farmId]);
-
-  const fetchEntries = async () => {
+  const fetchEntries = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API_URL}/api/stock/${farmId}`, {
         withCredentials: true
@@ -52,7 +46,13 @@ export default function StockManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [farmId]);
+
+  useEffect(() => {
+    if (farmId) {
+      fetchEntries();
+    }
+  }, [farmId, fetchEntries]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
