@@ -1,0 +1,89 @@
+{
+  "theme": "dark",
+  "archetype": "Archetype 1 (Organic & Earthy) - Dark Mode Tech Variant",
+  "emotional_tone": "Professional, commanding, high-tech agricultural",
+  "colors": {
+    "background_primary": "#0A0B09",
+    "background_secondary": "#121410",
+    "glass_surface": "bg-white/5 backdrop-blur-2xl backdrop-saturate-150",
+    "glass_border": "border border-white/10",
+    "text_primary": "#F4F5F0",
+    "text_secondary": "#A3A89A",
+    "accent_primary": "#E67E22",
+    "accent_hover": "#D35400",
+    "success": "#2ECC71",
+    "danger": "#E74C3C",
+    "warning": "#F1C40F"
+  },
+  "typography": {
+    "heading_font": "Outfit",
+    "body_font": "IBM Plex Sans",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tight font-light",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-medium",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "body": "text-base leading-relaxed",
+      "labels": "text-xs tracking-[0.2em] uppercase font-bold text-white/50"
+    }
+  },
+  "spacing_and_layout": {
+    "grid_strategy": "The 'Control Room' Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4)",
+    "card_padding": "p-6 lg:p-8",
+    "general_spacing": "Generous spacing. Gaps between grid items should be gap-6 or gap-8.",
+    "border_radius": "rounded-2xl for main cards, rounded-xl for inner elements"
+  },
+  "components": {
+    "cards": "Use 'Crystal Glass' style. bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.2)]. No flat opaque backgrounds for main widgets.",
+    "buttons": "Primary: bg-[#E67E22] text-white hover:bg-[#D35400] transition-colors. Secondary/Ghost: bg-white/10 text-white hover:bg-white/20.",
+    "inputs": "Glass inputs: bg-black/20 border border-white/10 focus:border-[#E67E22] focus:ring-1 focus:ring-[#E67E22] text-white.",
+    "tables": "Shadcn tables but styled with transparent rows. Hover states on rows: bg-white/5. Ensure high contrast for data text.",
+    "sidebar": "Fixed left, w-64, glassmorphism panel. border-r border-white/10."
+  },
+  "motion_and_interactions": {
+    "hover_states": "All interactive cards/rows should have a subtle -translate-y-1 and border-white/20 glow on hover.",
+    "page_transitions": "Fade and slight upward slide for route changes.",
+    "list_animations": "Staggered fade-in for table rows and dashboard widgets."
+  },
+  "icons": {
+    "library": "lucide-react",
+    "style": "stroke-width 1.5, desaturated for secondary info, colored for statuses (green/red)."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/0e5f496c-b62d-4592-aca2-ac22a2b9af8a/images/6298779450eabab2ebd3b4ba74efb626263d6f61e2858ffb7c2f00630b336b0d.png",
+        "description": "Cinematic login background",
+        "category": "login_background"
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/0e5f496c-b62d-4592-aca2-ac22a2b9af8a/images/851811d744bcb2cd44708aa2bf0bac4ec0bffa2a045c2abd22abecb93c648e07.png",
+        "description": "Farm 1 Cover - Badshah-gitodiya",
+        "category": "farm_cover_1"
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/0e5f496c-b62d-4592-aca2-ac22a2b9af8a/images/42efc3c8d1a9c4fe8327cb92398f4f429a1408bcdcf1acd8779372be2741d4c4.png",
+        "description": "Farm 2 Cover - Amayrah-narsanda",
+        "category": "farm_cover_2"
+      },
+      {
+        "url": "https://static.prod-images.emergentagent.com/jobs/0e5f496c-b62d-4592-aca2-ac22a2b9af8a/images/828053fea1de2835501fa76518844523def99733c02eb5200e7d5ee70b742e59.png",
+        "description": "Farm 3 Cover - Qismat-jod",
+        "category": "farm_cover_3"
+      }
+    ]
+  },
+  "testing_attributes": {
+    "rule": "All interactive and key informational elements MUST include a `data-testid` attribute (e.g., `data-testid=\"login-submit\"`)."
+  },
+  "instructions_to_main_agent": [
+    "Use Tailwind CSS for all styling. DO NOT use external CSS files for component styles.",
+    "Implement the 'Crystal Glass' effect heavily as requested by user.",
+    "For the multi-language toggle (EN/GU), implement a context or state that switches text labels.",
+    "Create separate pages/views for Dashboard, Stock, Feed, and Billing.",
+    "For PDF export, you can use window.print() styling or a lightweight library like jspdf.",
+    "Ensure the sidebar is mobile responsive (hidden off-canvas on mobile with a hamburger menu to toggle it).",
+    "Use Shadcn UI components but heavily customize them to fit the glassmorphic dark theme.",
+    "Replace generic fonts with Outfit (headings) and IBM Plex Sans (body) via Google Fonts in index.html.",
+    "Build the dashboard using the 'Control Room' grid strategy for maximum density and data correlation."
+  ]
+}
