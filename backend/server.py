@@ -24,6 +24,11 @@ db = client[os.environ['DB_NAME']]
 app = FastAPI()
 
 JWT_ALGORITHM = "HS256"
+DEFAULT_CORS_ORIGINS = [
+    "http://localhost:3000",
+    "https://the-arkan-farms.vercel.app",
+]
+VERCEL_ORIGIN_REGEX = r"https://.*\.vercel\.app"
 
 def get_cookie_settings() -> dict:
     return {
@@ -171,7 +176,7 @@ async def startup_db():
     await db.feed_entries.create_index([("farm_id", 1), ("date", -1)])
     await db.invoices.create_index([("date", -1)])
     
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@poultry.com")
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@poultry.com").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
@@ -187,9 +192,20 @@ async def startup_db():
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one(
             {"email": admin_email},
-            {"$set": {"password_hash": hash_password(admin_password)}}
+            {"$set": {
+                "password_hash": hash_password(admin_password),
+                "name": existing.get("name") or "Admin",
+                "role": "admin",
+                "updated_at": datetime.now(timezone.utc)
+            }}
         )
         logger.info(f"Admin password updated")
+    elif existing.get("role") != "admin":
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {"role": "admin", "updated_at": datetime.now(timezone.utc)}}
+        )
+        logger.info(f"Admin role updated: {admin_email}")
     
     farms_count = await db.farms.count_documents({})
     if farms_count == 0:
@@ -642,12 +658,17 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     }
 
 def get_cors_origins() -> List[str]:
-    configured_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
-    origins = [origin.strip().rstrip("/") for origin in configured_origins.split(",") if origin.strip()]
+    configured_origins = os.environ.get("CORS_ORIGINS")
+    origins = DEFAULT_CORS_ORIGINS.copy()
+    origins.extend([
+        origin.strip().rstrip("/")
+        for origin in (configured_origins.split(",") if configured_origins else [])
+        if origin.strip()
+    ])
     frontend_url = os.environ.get("FRONTEND_URL", "").strip().rstrip("/")
     if frontend_url and frontend_url not in origins:
         origins.append(frontend_url)
-    return origins
+    return list(dict.fromkeys(origins))
 
 cors_origins = get_cors_origins()
 
@@ -658,6 +679,7 @@ async def health_check():
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=VERCEL_ORIGIN_REGEX,
     allow_credentials="*" not in cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],

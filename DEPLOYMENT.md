@@ -24,13 +24,22 @@ DB_NAME=arkan_farms
 JWT_SECRET=<generate-a-long-random-secret>
 ADMIN_EMAIL=admin@poultry.com
 ADMIN_PASSWORD=<change-this-password>
-FRONTEND_URL=https://<your-vercel-app>.vercel.app
-CORS_ORIGINS=https://<your-vercel-app>.vercel.app
+FRONTEND_URL=https://the-arkan-farms.vercel.app
+CORS_ORIGINS=https://the-arkan-farms.vercel.app
 COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 ```
 
 You can copy the same list from `backend/railway.env.example`.
+
+On startup, the backend creates or updates the MongoDB admin user from:
+
+```env
+ADMIN_EMAIL=admin@poultry.com
+ADMIN_PASSWORD=<your Railway ADMIN_PASSWORD value>
+```
+
+After changing either value in Railway, redeploy or restart the backend so the MongoDB user is seeded again.
 
 Railway uses `backend/railway.json` and starts the API with:
 
@@ -59,7 +68,7 @@ Recommended Vercel project settings:
 Set this Vercel environment variable for Production, Preview, and Development:
 
 ```env
-REACT_APP_BACKEND_URL=https://<your-railway-backend>.up.railway.app
+REACT_APP_BACKEND_URL=https://arkan-farms-production.up.railway.app
 ```
 
 You can copy the same variable from `frontend/vercel.env.example`.
@@ -73,14 +82,14 @@ Vercel uses `frontend/vercel.json`:
 After Vercel gives you the frontend URL, update Railway:
 
 ```env
-FRONTEND_URL=https://<your-vercel-app>.vercel.app
-CORS_ORIGINS=https://<your-vercel-app>.vercel.app
+FRONTEND_URL=https://the-arkan-farms.vercel.app
+CORS_ORIGINS=https://the-arkan-farms.vercel.app
 ```
 
 After Railway gives you the backend URL, update Vercel:
 
 ```env
-REACT_APP_BACKEND_URL=https://<your-railway-backend>.up.railway.app
+REACT_APP_BACKEND_URL=https://arkan-farms-production.up.railway.app
 ```
 
 ## Local Development
