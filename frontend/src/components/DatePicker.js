@@ -4,7 +4,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 
-export const DatePicker = ({ value, onChange, testId }) => {
+export const DatePicker = ({ value, onChange, testId, disabled = false }) => {
   const dateValue = value ? new Date(value + 'T00:00:00') : undefined;
 
   const handleSelect = (date) => {
@@ -22,7 +22,8 @@ export const DatePicker = ({ value, onChange, testId }) => {
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full px-4 py-2 glass-input rounded-xl text-left flex items-center justify-between gap-2"
+          disabled={disabled}
+          className="w-full px-4 py-2 glass-input rounded-xl text-left flex items-center justify-between gap-2 disabled:pointer-events-none disabled:opacity-50"
           data-testid={testId}
         >
           <span className={dateValue ? 'text-white' : 'text-white/40'}>

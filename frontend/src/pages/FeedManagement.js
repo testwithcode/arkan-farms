@@ -4,7 +4,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'sonner';
-import { Plus, Edit2, Trash2, Search, Download, FileText, ArrowLeft } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, Download, FileText, ArrowLeft, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { DatePicker } from '../components/DatePicker';
@@ -13,6 +13,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const sortEntriesByDate = (items) => [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
 
 export default function FeedManagement() {
   const { farmId } = useParams();
@@ -26,6 +27,8 @@ export default function FeedManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   
   const [formData, setFormData] = useState({
     date: '',
@@ -41,7 +44,7 @@ export default function FeedManagement() {
       const { data } = await axios.get(`${API_URL}/api/feed/${farmId}`, {
         withCredentials: true
       });
-      setEntries(data);
+      setEntries(sortEntriesByDate(data));
     } catch (error) {
       toast.error('Failed to fetch entries');
     } finally {
@@ -73,38 +76,52 @@ export default function FeedManagement() {
       notes: formData.notes
     };
 
+    setSaving(true);
     try {
+      let savedEntry;
       if (editingEntry) {
-        await axios.put(`${API_URL}/api/feed/${editingEntry.id}`, payload, {
+        const { data } = await axios.put(`${API_URL}/api/feed/${editingEntry.id}`, payload, {
           withCredentials: true
         });
+        savedEntry = data;
         toast.success('Entry updated successfully');
       } else {
-        await axios.post(`${API_URL}/api/feed`, payload, {
+        const { data } = await axios.post(`${API_URL}/api/feed`, payload, {
           withCredentials: true
         });
+        savedEntry = data;
         toast.success('Entry added successfully');
       }
-      
-      fetchEntries();
+
+      setEntries((current) => {
+        const withoutOldEntry = editingEntry
+          ? current.filter((entry) => entry.id !== editingEntry.id)
+          : current;
+        return sortEntriesByDate([savedEntry, ...withoutOldEntry]);
+      });
       setShowModal(false);
       resetForm();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Operation failed');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
     
+    setDeletingId(id);
     try {
       await axios.delete(`${API_URL}/api/feed/${id}`, {
         withCredentials: true
       });
       toast.success('Entry deleted successfully');
-      fetchEntries();
+      setEntries((current) => current.filter((entry) => entry.id !== id));
     } catch (error) {
       toast.error('Failed to delete entry');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -382,10 +399,15 @@ export default function FeedManagement() {
                             </button>
                             <button
                               onClick={() => handleDelete(entry.id)}
-                              className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors"
+                              disabled={deletingId === entry.id}
+                              className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
                               data-testid={`delete-button-${index}`}
                             >
-                              <Trash2 className="w-4 h-4 text-red-400" />
+                              {deletingId === entry.id ? (
+                                <Loader2 className="w-4 h-4 text-red-400 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4 text-red-400" />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -412,7 +434,7 @@ export default function FeedManagement() {
         </div>
       </main>
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={(open) => !saving && setShowModal(open)}>
         <DialogContent className="bg-[#121410] border-white/10 text-white">
           <DialogHeader>
             <DialogTitle className="text-2xl font-['Outfit']">
@@ -426,6 +448,7 @@ export default function FeedManagement() {
               <DatePicker
                 value={formData.date}
                 onChange={(date) => setFormData({...formData, date})}
+                disabled={saving}
                 testId="date-input"
               />
             </div>
@@ -438,6 +461,7 @@ export default function FeedManagement() {
                 onChange={(e) => setFormData({...formData, feed_name: e.target.value})}
                 className="w-full px-4 py-2 glass-input rounded-xl"
                 required
+                disabled={saving}
                 data-testid="feed-name-input"
               />
             </div>
@@ -451,6 +475,7 @@ export default function FeedManagement() {
                   onChange={(e) => setFormData({...formData, bags: e.target.value})}
                   className="w-full px-4 py-2 glass-input rounded-xl"
                   required
+                  disabled={saving}
                   data-testid="bags-input"
                 />
               </div>
@@ -463,6 +488,7 @@ export default function FeedManagement() {
                   onChange={(e) => setFormData({...formData, weight: e.target.value})}
                   className="w-full px-4 py-2 glass-input rounded-xl"
                   required
+                  disabled={saving}
                   data-testid="weight-input"
                 />
               </div>
@@ -475,6 +501,7 @@ export default function FeedManagement() {
                   onChange={(e) => setFormData({...formData, used: e.target.value})}
                   className="w-full px-4 py-2 glass-input rounded-xl"
                   required
+                  disabled={saving}
                   data-testid="used-input"
                 />
               </div>
@@ -487,6 +514,7 @@ export default function FeedManagement() {
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 className="w-full px-4 py-2 glass-input rounded-xl"
                 rows="3"
+                disabled={saving}
                 data-testid="notes-input"
               />
             </div>
@@ -497,15 +525,18 @@ export default function FeedManagement() {
                 onClick={() => { setShowModal(false); resetForm(); }}
                 variant="outline"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                disabled={saving}
               >
                 {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 className="bg-[#E67E22] hover:bg-[#D35400] text-white"
+                disabled={saving}
                 data-testid="save-button"
               >
-                {t('save')}
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                {saving ? (editingEntry ? 'Updating...' : 'Adding...') : t('save')}
               </Button>
             </div>
           </form>

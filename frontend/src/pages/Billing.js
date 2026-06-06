@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Sidebar } from '../components/Sidebar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'sonner';
-import { Plus, Download, FileText, Edit2, Search, Trash2 } from 'lucide-react';
+import { Plus, Download, FileText, Search, Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
@@ -13,6 +13,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
+const sortInvoicesByDate = (items) => [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
 
 export default function Billing() {
   const { t } = useLanguage();
@@ -21,6 +22,9 @@ export default function Billing() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState(null);
   
   const [formData, setFormData] = useState({
     invoice_number: '',
@@ -54,7 +58,7 @@ export default function Billing() {
       const { data } = await axios.get(`${API_URL}/api/invoices`, {
         withCredentials: true
       });
-      setInvoices(data);
+      setInvoices(sortInvoicesByDate(data));
     } catch (error) {
       toast.error('Failed to fetch invoices');
     } finally {
@@ -130,16 +134,19 @@ export default function Billing() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    setSavingInvoice(true);
     try {
-      await axios.post(`${API_URL}/api/invoices`, formData, {
+      const { data } = await axios.post(`${API_URL}/api/invoices`, formData, {
         withCredentials: true
       });
       toast.success('Invoice generated successfully');
-      fetchInvoices();
+      setInvoices((current) => sortInvoicesByDate([data, ...current]));
       setShowModal(false);
       resetForm();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to generate invoice');
+    } finally {
+      setSavingInvoice(false);
     }
   };
 
@@ -163,30 +170,38 @@ export default function Billing() {
   };
 
   const updatePaymentStatus = async (invoiceId, newStatus) => {
+    setUpdatingStatusId(invoiceId);
     try {
-      await axios.put(
+      const { data } = await axios.put(
         `${API_URL}/api/invoices/${invoiceId}`,
         { payment_status: newStatus },
         { withCredentials: true }
       );
       toast.success('Payment status updated');
-      fetchInvoices();
+      setInvoices((current) => current.map((invoice) => (
+        invoice.id === invoiceId ? data : invoice
+      )));
     } catch (error) {
       toast.error('Failed to update status');
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
   const deleteInvoice = async (invoiceId) => {
     if (!window.confirm('Are you sure you want to delete this invoice?')) return;
     
+    setDeletingInvoiceId(invoiceId);
     try {
       await axios.delete(`${API_URL}/api/invoices/${invoiceId}`, {
         withCredentials: true
       });
       toast.success('Invoice deleted');
-      fetchInvoices();
+      setInvoices((current) => current.filter((invoice) => invoice.id !== invoiceId));
     } catch (error) {
       toast.error('Failed to delete invoice');
+    } finally {
+      setDeletingInvoiceId(null);
     }
   };
 
@@ -399,7 +414,8 @@ export default function Billing() {
                             <select
                               value={invoice.payment_status}
                               onChange={(e) => updatePaymentStatus(invoice.id, e.target.value)}
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.payment_status)} border-0 cursor-pointer`}
+                              disabled={updatingStatusId === invoice.id}
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.payment_status)} border-0 cursor-pointer disabled:cursor-wait disabled:opacity-50`}
                               data-testid={`status-select-${index}`}
                             >
                               <option value="paid">{t('paid')}</option>
@@ -418,10 +434,15 @@ export default function Billing() {
                               </button>
                               <button
                                 onClick={() => deleteInvoice(invoice.id)}
-                                className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors"
+                                disabled={deletingInvoiceId === invoice.id}
+                                className="p-1.5 hover:bg-red-500/20 rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
                                 data-testid={`delete-invoice-${index}`}
                               >
-                                <Trash2 className="w-4 h-4 text-red-400" />
+                                {deletingInvoiceId === invoice.id ? (
+                                  <Loader2 className="w-4 h-4 text-red-400 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4 text-red-400" />
+                                )}
                               </button>
                             </div>
                           </td>
@@ -436,7 +457,7 @@ export default function Billing() {
         </div>
       </main>
 
-      <Dialog open={showModal} onOpenChange={setShowModal}>
+      <Dialog open={showModal} onOpenChange={(open) => !savingInvoice && setShowModal(open)}>
         <DialogContent className="bg-[#121410] border-white/10 text-white max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl font-['Outfit']">{t('generateInvoice')}</DialogTitle>
@@ -459,6 +480,7 @@ export default function Billing() {
                 <DatePicker
                   value={formData.date}
                   onChange={(date) => setFormData({...formData, date})}
+                  disabled={savingInvoice}
                   testId="date-input"
                 />
               </div>
@@ -473,6 +495,7 @@ export default function Billing() {
                   onChange={(e) => setFormData({...formData, customer_name: e.target.value})}
                   className="w-full px-4 py-2 glass-input rounded-xl"
                   required
+                  disabled={savingInvoice}
                   data-testid="customer-name-input"
                 />
               </div>
@@ -484,6 +507,7 @@ export default function Billing() {
                   onChange={(e) => setFormData({...formData, mobile_number: e.target.value})}
                   className="w-full px-4 py-2 glass-input rounded-xl"
                   required
+                  disabled={savingInvoice}
                   data-testid="mobile-input"
                 />
               </div>
@@ -498,6 +522,7 @@ export default function Billing() {
                   onChange={(e) => setFormData({...formData, address: e.target.value})}
                   className="w-full px-4 py-2 glass-input rounded-xl"
                   required
+                  disabled={savingInvoice}
                   data-testid="address-input"
                 />
               </div>
@@ -506,6 +531,7 @@ export default function Billing() {
                 <Select
                   value={formData.farm_id}
                   onValueChange={(value) => setFormData({...formData, farm_id: value})}
+                  disabled={savingInvoice}
                 >
                   <SelectTrigger className="glass-input rounded-xl" data-testid="farm-select">
                     <SelectValue placeholder="Select farm" />
@@ -533,6 +559,7 @@ export default function Billing() {
                       onChange={(e) => handleItemChange(index, 'product_name', e.target.value)}
                       className="w-full px-3 py-2 glass-input rounded-xl text-sm"
                       required
+                      disabled={savingInvoice}
                     />
                   </div>
                   <div className="col-span-2">
@@ -543,6 +570,7 @@ export default function Billing() {
                       onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)}
                       className="w-full px-3 py-2 glass-input rounded-xl text-sm"
                       required
+                      disabled={savingInvoice}
                     />
                   </div>
                   <div className="col-span-2">
@@ -553,6 +581,7 @@ export default function Billing() {
                       onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value) || 0)}
                       className="w-full px-3 py-2 glass-input rounded-xl text-sm"
                       required
+                      disabled={savingInvoice}
                     />
                   </div>
                   <div className="col-span-2">
@@ -568,7 +597,8 @@ export default function Billing() {
                       <button
                         type="button"
                         onClick={() => removeProduct(index)}
-                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors"
+                        disabled={savingInvoice}
+                        className="p-2 hover:bg-red-500/20 rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
                       >
                         <Trash2 className="w-4 h-4 text-red-400" />
                       </button>
@@ -582,6 +612,7 @@ export default function Billing() {
                 variant="outline"
                 size="sm"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                disabled={savingInvoice}
                 data-testid="add-product-button"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -601,6 +632,7 @@ export default function Billing() {
                     checked={formData.gst_enabled}
                     onChange={handleGSTToggle}
                     className="rounded"
+                    disabled={savingInvoice}
                     data-testid="gst-checkbox"
                   />
                   <span>{t('gst')} (18%)</span>
@@ -618,6 +650,7 @@ export default function Billing() {
               <Select
                 value={formData.payment_status}
                 onValueChange={(value) => setFormData({...formData, payment_status: value})}
+                disabled={savingInvoice}
               >
                 <SelectTrigger className="glass-input rounded-xl" data-testid="payment-status-select">
                   <SelectValue />
@@ -637,6 +670,7 @@ export default function Billing() {
                 onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 className="w-full px-4 py-2 glass-input rounded-xl"
                 rows="2"
+                disabled={savingInvoice}
                 data-testid="notes-input"
               />
             </div>
@@ -647,15 +681,18 @@ export default function Billing() {
                 onClick={() => { setShowModal(false); resetForm(); }}
                 variant="outline"
                 className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                disabled={savingInvoice}
               >
                 {t('cancel')}
               </Button>
               <Button
                 type="submit"
                 className="bg-[#E67E22] hover:bg-[#D35400] text-white"
+                disabled={savingInvoice}
                 data-testid="save-invoice-button"
               >
-                {t('generateInvoice')}
+                {savingInvoice && <Loader2 className="w-4 h-4 animate-spin" />}
+                {savingInvoice ? 'Generating...' : t('generateInvoice')}
               </Button>
             </div>
           </form>
